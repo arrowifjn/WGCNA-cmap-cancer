@@ -13,16 +13,3 @@ this is a two step research, the first step is try to find out the potential pro
 we need gene expression data from tumor and non-tumor, to find out what is feature gene expression in the tumor. To do this, we need to search and download those data from GEO or TCGA. According to the reference, we are trying to do some data mining from 
 GSE14520, GSE25097, GSE29721, and GSE62232,and TCGA
 
-
-
-```
-print("di,,sdfasdfasdf")
-
-```
-
-sadfasdf
-
-```
-print("hi")
-
-```
