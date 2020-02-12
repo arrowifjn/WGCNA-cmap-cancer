@@ -3,10 +3,12 @@
 The purpose of this research is to find some potential prognostic genes and some candidate small molecule for HCC treatment.
 ### The process of this reaserch
 this is a two step research, the first step is try to find out the potential prognostic genes in HCC, and then try to find some cure targeting those genes. 
-1 data searching
-2 
+1 data searching, the common data base are GEO and TCGA, according to the reference, we are trying to do some data mining from  
+2 data mining,
+3 data preparation
+4 
 
-### data source: 
+### Data source: 
 we need gene expression data from tumor and non-tumor, to find out what is feature gene expression in the tumor. To do this, we need to search and download those data from GEO or TCGA.
 
 
