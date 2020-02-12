@@ -18,6 +18,24 @@ we need gene expression data from tumor and non-tumor, to find out what is featu
 
 1. GSE14520 dataset was based on the GPL571 and GPL3921 including 22 + 225 HCC tumor sample, 21 + 220 non-tumor sample [checked]
 2. GSE25097 dataset was based on the GPL10687 plaform including 268 HCC tumor sample, 243 adjacent non-tumor sample [checked]
-3. GSE29721 dataset was based on the GPL570 plaform including 10 HCC tumor sample, 10 non-tumor sample [checked] XXX
-4. GSE62232 dataset was based on the GPL570 plaform including 81 HCC tumor sample, 10 non-tumor sample [checked] XXX
+
+~~3. GSE29721 dataset was based on the GPL570 plaform including 10 HCC tumor sample, 10 non-tumor sample [checked] XXX~~
+
+~~4. GSE62232 dataset was based on the GPL570 plaform including 81 HCC tumor sample, 10 non-tumor sample [checked] XXX~~
+
+5. TCGA data
+6. clinic data
+
+
+### Data preparation
+
+The microarray analyses, RMA method was used for background correction of raw gene expression matrixes, then log2 transformation of expression matrixes. the “affy” R package was utilized for quantile normalization, median polish algorithm summarization
+
+### Data analysing method: 
+
+1. limma 
+2. WGCNA
+
+
+
 
