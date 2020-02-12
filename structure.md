@@ -34,7 +34,7 @@ The microarray analyses, RMA method was used for background correction of raw ge
 ### Data analysing method: 
 
 1. limma 
-2. WGCNA
+2. WGCNA 
 
 
 
