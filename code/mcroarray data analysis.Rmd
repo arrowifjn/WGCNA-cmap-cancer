@@ -1,0 +1,59 @@
+---
+title: "mcroarray data analysis"
+author: "Jiang Nan"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 1. Get packages
+we need to use the limma model to srceen the DEG
+
+```{r}
+library(limma) # load limma
+#library(GEOquery)
+
+```
+
+### Load data and sample comparation vector
+
+```{r}
+
+setwd('C:/Users/DELL/Desktop/WGCNA-cmap-cancer/')
+eset<-read.table("data/GSE14520/GSE14520-GPL3921_series_matrix.txt", 
+                     sep='\t', header=T,comment.char = "!", blank.lines.skip = TRUE, row.names=1) #load gene expression matrix, omit those comment and blank rows
+#head(eset_txt)  # see if the data have already log2
+#eset_txt<-log2(eset_txt) # if the data has already been log2 then, skip this line.
+```
+
+### sample comparation vector
+```{r}
+setwd('C:/Users/DELL/Desktop/WGCNA-cmap-cancer/')
+groups<-read.csv("data/GSE14520/group-of-GPL3921_series.csv", sep=',', header=T) #load gene expression
+groups<-factor(groups$type)
+head(groups)
+```
+
+### use the limma model get gene expression table
+
+```{r}
+design<-model.matrix(~-1+groups)
+contrast.matrix<-makeContrasts(contrasts="groups1-groups0",levels=design) #构建对比模型，并存储于变量contrast.matrix
+
+fit<-lmFit(eset,design) #线形模型拟合，并存储于变量fit中
+
+fit1<-contrasts.fit(fit,contrast.matrix) #根据对比模型进行差值计算，并存储于变量fit1中
+
+fit2<-eBayes(fit1) #贝叶斯检验，并将结果存储于变量fit2中7
+
+allgene<-topTable(fit2,coef="groups1-groups0",n=nrow(fit2),sort.by="p") #生成所有基因的检验表，存储于allgene中
+
+
+```
+
+### make the experiment design model 
+```{r}
+
+```
