@@ -12,48 +12,175 @@ knitr::opts_chunk$set(echo = TRUE)
 we need to use the limma model to srceen the DEG
 
 ```{r}
-library(limma) # load limma
-#library(GEOquery)
+
+library(limma) # load limma model 
+library(annotate) # annote microarray
+library(impute)  # for deal with missing value
+library(ggplot2)  #加载ggplot2包
+library(pheatmap) #加载pheatmap包
+```
+
+### parameters
+```{r}
+main_path ='C:/Users/DELL/Desktop/WGCNA-cmap-cancer/data/GSE14520/'
+eset_file_path="GSE14520-GPL3921_series_matrix.txt"
+group_file_path="group-of-GPL3921_series.csv"
+anotation_Plaform='hthgu133a'  #check GEO see the bioc_backage name of the microarray
+adj_PVal=0.05
+logFC=1
 
 ```
 
 ### Load data and sample comparation vector
 
 ```{r}
+setwd(main_path)
+eset<-read.table(eset_file_path, sep='\t', header=T, comment.char = "!", blank.lines.skip = TRUE, row.names=1) #load gene expression matrix, omit those comment and blank rows
 
-setwd('C:/Users/DELL/Desktop/WGCNA-cmap-cancer/')
-eset<-read.table("data/GSE14520/GSE14520-GPL3921_series_matrix.txt", 
-                     sep='\t', header=T,comment.char = "!", blank.lines.skip = TRUE, row.names=1) #load gene expression matrix, omit those comment and blank rows
 #head(eset_txt)  # see if the data have already log2
 #eset_txt<-log2(eset_txt) # if the data has already been log2 then, skip this line.
 ```
 
-### sample comparation vector
+### check the data deviation
+
 ```{r}
-setwd('C:/Users/DELL/Desktop/WGCNA-cmap-cancer/')
-groups<-read.csv("data/GSE14520/group-of-GPL3921_series.csv", sep=',', header=T) #load gene expression
-groups<-factor(groups$type)
-head(groups)
+boxplot(eset, col="blue", xaxt='n', outline=F)
+
+```
+### check the data deviation is too big the normalize the matrix
+
+```{r}
+eset2 = normalizeBetweenArrays(as.matrix(eset),method="scale")
+
+boxplot(eset2,col = "red",xaxt = "n",outline = F)
 ```
 
-### use the limma model get gene expression table
+### Probe ID into Gene symbol 中位数合并表达值（对平台文件进行整理）
 
 ```{r}
+# probe_exp<-read.table(eset_file_path, sep='\t', header=T, comment.char = "!", blank.lines.skip = TRUE, row.names=1)
+# get annotation info
+affydb<-annPkgName(anotation_Plaform,type="db")
+#BiocManager::install(affydb)
+library(affydb,character.only=TRUE)
+eset$symbols<-getSYMBOL(rownames(eset),affydb)
+
+# merge the mutiple value with same gene symble
+index<-which(!is.na(eset$symbols))
+eset_matrix<-eset[index,]
+#write.csv(exp_matrix,file="exp_matrix.csv",quote=F)
+geneidfactor<-factor(eset_matrix$symbols)
+#head(geneidfactor)
+eset_matrix<- eset_matrix[,-length(eset_matrix)]
+#head(exp_matrix)
+gene_eset_matrix<-apply(eset_matrix,2,function(x) tapply(x,geneidfactor, median))
+
+write.csv(gene_eset_matrix,file=paste(main_path,"gene_eset_matrix.csv",sep = ""),quote=F)
+```
+
+### DEAL WITH missing values 补充缺失值 
+#最近邻居法（KNN，k-Nearest Neighbor）法：此方法是寻找和有缺失值的基因的表达谱相似的其他基因，通过这些基因的表达值（依照表达谱相似性加权）来填充缺失值
+
+```{r}
+#读取表达值
+#gene_eset_matrix<-read.table("gene_eset_matrix.csv",header=T,sep="\t",row.names=1)
+gene_eset_matrix<-as.matrix(gene_eset_matrix)
+#KNN法计算缺失值
+imputed_gene_exp<-impute.knn(gene_eset_matrix,k=10,rowmax=0.5,colmax=0.8,maxp=3000,rng.seed=362436069)
+#读出经过缺失值处理的数据
+GeneExp<-imputed_gene_exp$data
+#写入表格
+genesymbol<-rownames(GeneExp)
+gene_eset_matrix<-cbind(genesymbol,GeneExp)
+write.csv(GeneExp,file=paste(main_path,"gene_eset_matrix2.csv",sep = ""),quote=F)
+```
+
+
+### Set sample comparation vector 分组
+
+make sure in the group file the cancer value is 1, the non-cancer value is 0, and column name is "type"
+
+```{r}
+setwd(main_path)
+
+groups<-read.csv(group_file_path, sep=',', header=T) #load gene expression
+
+groups<-factor(groups$type)
+#head(groups)
+
+```
+
+### Use the limma model get gene expression table
+
+```{r}
+setwd(main_path)
 design<-model.matrix(~-1+groups)
 contrast.matrix<-makeContrasts(contrasts="groups1-groups0",levels=design) #构建对比模型，并存储于变量contrast.matrix
 
-fit<-lmFit(eset,design) #线形模型拟合，并存储于变量fit中
+fit<-lmFit(gene_eset_matrix,design) #The linear model fit 
+fit1<-contrasts.fit(fit,contrast.matrix) # contrast computing
+fit2<-eBayes(fit1)    # Bayes test
+allgene<-topTable(fit2,coef="groups1-groups0",n=nrow(fit2),sort.by="p") #Generate a checklist of all the genes
 
-fit1<-contrasts.fit(fit,contrast.matrix) #根据对比模型进行差值计算，并存储于变量fit1中
+write.csv(allgene,file="allgene DE result.csv",quote=F)
+```
 
-fit2<-eBayes(fit1) #贝叶斯检验，并将结果存储于变量fit2中7
+### Classify DEGs
 
-allgene<-topTable(fit2,coef="groups1-groups0",n=nrow(fit2),sort.by="p") #生成所有基因的检验表，存储于allgene中
 
+```{r}
+setwd(main_path)
+allgene$type<-NA
+#给allgene增加一列type，并给数据赋值为NA
+for(i in 1:nrow(allgene))if(allgene[i,1]>logFC & allgene[i,5]<adj_PVal){allgene[i,7]<-"up"}else if(-allgene[i,1]>logFC & allgene[i,5]<adj_PVal) {allgene[i,7]<-"down"}else{allgene[i,7]<-"normal"}
+#通过循环语句，将基因类型分为三类（logFC>1.5，adj.p.Val<0.01的为上调基因up，logFC<-1.5,adj.p.Val<0.01的为下调基因down，其他为normal）
+#write.csv(allgene,file="allgene2.csv",quote=F)
+#将新的所有基因的检测报告，输出为csv格式。
+gene_up<-allgene[allgene$type=="up",]
+#筛选上调差异基因，并存储于变量gene_up中
+gene_down<-allgene[allgene$type=="down",]
+#筛选下调差异基因，并存储于变量gene_down中
+gene_dif<-allgene[allgene$type!="normal",]
+#筛选非差异基因，并存储于变量gene_dif中
+write.csv(gene_up,file="DE_gene_up.csv",quote=F)
+#将筛选的上调基因检测报告，保存为csv格式
+write.csv(gene_down,file="DE_gene_down.csv",quote=F)
+#将筛选的下调基因检测报告，保存为csv格式
+write.csv(gene_dif,file="DE_gene_dif.csv",quote=F)
+#将筛选的差异基因检测报告，保存为csv格式
 
 ```
 
-### make the experiment design model 
+### volcano map and heat map
+
+```{r}
+setwd(main_path)
+threshold<-factor(allgene$type)
+#将type转化为因子向量，并存储于变量threshold中，用来区分火山图差异基因颜色鑹?
+pdf(file="volcano.pdf",width=10,height=10)
+
+ggplot(allgene,aes(x=logFC,y=-log10(adj.P.Val),colour=threshold))+xlab("log2FC")+ylab("-log10adj.P-Value")+ggtitle("Volcano Plot")+theme(plot.title=element_text(hjust=0.5))+geom_point()+geom_vline(xintercept = c(-logFC,logFC))+geom_hline(yintercept = -log10(adj_PVal))+theme(panel.grid =element_blank())+scale_colour_manual(values=c("green", "black", "red"))+expand_limits(x=c(-8,8))
+dev.off() # close the device 保存关闭绘图设备
+```
+
+### heat map
+
+```{r}
+setwd(main_path)
+gene_dif_exp<-gene_eset_matrix[rownames(gene_dif),]
+#提取差异基因的基因表达值
+write.csv(gene_dif_exp,file="gene_dif_exp.csv",quote=F)
+#将筛选的差异基因表达，保存为csv格式
+tiff(file="gene_dif_pheatmap.tif",res=300,units='in',width=30,height=30)
+
+pheatmap(gene_dif_exp,color=colorRampPalette(c("green","black","red"))(100),fontsize_row=3,scale="row",border_color=NA)
+dev.off() #保存，关闭绘图设备
+
+```
+
+
+
+
 ```{r}
 
 ```
