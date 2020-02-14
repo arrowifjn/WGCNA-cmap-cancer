@@ -11,7 +11,7 @@
 ###
 ### ---------------
 
-
+#set mirror for china
 rm(list = ls())   
 options()$repos 
 options()$BioC_mirror
